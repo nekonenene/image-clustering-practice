@@ -21,7 +21,7 @@ import pandas as pd
 import pickle
 
 working_path = r"."
-imageset_path = r"imageset_1"
+imageset_path = r"imageset"
 
 # change the working directory to the path where the images are located
 os.chdir(working_path)

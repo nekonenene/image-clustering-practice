@@ -19,3 +19,16 @@ source venv/bin/activate
 ```sh
 pip install -r requirements.txt
 ```
+
+4: Put images
+
+```sh
+mkdir imageset
+cp /path/to/images/* imageset/
+```
+
+## Run
+
+```sh
+python main.py
+```
