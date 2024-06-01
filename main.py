@@ -35,15 +35,16 @@ with os.scandir(imageset_path) as files:
     for file in files:
         if file.name.endswith('.jpg'):
             # adds only the image files to the pictures list
-            pictures.append(file.name)
+            pictures.append(imageset_path + '/' + file.name)
 
+print(f"Number of pictures: {len(pictures)}")
 
 model = VGG16()
 model = Model(inputs = model.inputs, outputs = model.layers[-2].output)
 
-def extract_features(file, model):
+def extract_features(filepath, model):
     # load the image as a 224x224 array
-    img = load_img(file, target_size=(224, 224))
+    img = load_img(filepath, target_size=(224, 224))
     # convert from 'PIL.Image.Image' to numpy array
     img = np.array(img)
     # reshape the data for the model reshape(num_of_samples, dim 1, dim 2, channels)
@@ -51,7 +52,7 @@ def extract_features(file, model):
     # prepare image for model
     imgx = preprocess_input(reshaped_img)
     # get the feature vector
-    features = model.predict(imgx, use_multiprocessing=True)
+    features = model.predict(imgx)
     return features
 
 data = {}
@@ -64,9 +65,13 @@ for picture in pictures:
         feat = extract_features(picture, model)
         data[picture] = feat
     # if something fails, save the extracted features as a pickle file (optional)
-    except:
+    except Exception as e:
+        print(f"Error: {e}")
         with open(p, 'wb') as file:
             pickle.dump(data, file)
+
+print(f"Number of data.keys: {len(data.keys())}")
+print(f"Number of data.values: {len(data.values())}")
 
 # get a list of the filenames
 filenames = np.array(list(data.keys()))
@@ -89,9 +94,9 @@ pca = PCA(n_components=100, random_state=22)
 pca.fit(feat)
 x = pca.transform(feat)
 
-clusters = 21
+clusters_count = 21
 # cluster feature vectors
-kmeans = KMeans(n_clusters=len(clusters), n_jobs=-1, random_state=22)
+kmeans = KMeans(n_clusters=clusters_count, random_state=22)
 kmeans.fit(x)
 
 # holds the cluster id and the images { id: [images] }
@@ -102,6 +107,9 @@ for file, cluster in zip(filenames, kmeans.labels_):
         groups[cluster].append(file)
     else:
         groups[cluster].append(file)
+
+# print groups
+print(groups)
 
 # function that lets you view a cluster (based on identifier)
 def view_cluster(cluster):
@@ -126,7 +134,7 @@ sse = []
 list_k = list(range(3, 50))
 
 for k in list_k:
-    km = KMeans(n_clusters=k, random_state=22, n_jobs=-1)
+    km = KMeans(n_clusters=k, random_state=22)
     km.fit(x)
 
     sse.append(km.inertia_)
@@ -136,3 +144,5 @@ plt.figure(figsize=(6, 6))
 plt.plot(list_k, sse)
 plt.xlabel(r'Number of clusters *k*')
 plt.ylabel('Sum of squared distance');
+
+plt.savefig("plot.png")
