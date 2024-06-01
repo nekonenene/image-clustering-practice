@@ -21,6 +21,8 @@ from random import randint
 import pandas as pd
 import pickle
 
+CLUSTERS_COUNT = 30 # Number of clusters of similar images to group together
+
 working_path = r"."
 imageset_path = r"imageset"
 
@@ -95,9 +97,8 @@ pca = PCA(n_components=100, random_state=22)
 pca.fit(feat)
 x = pca.transform(feat)
 
-clusters_count = 21
 # cluster feature vectors
-kmeans = KMeans(n_clusters=clusters_count, random_state=22)
+kmeans = KMeans(n_clusters=CLUSTERS_COUNT, random_state=22)
 kmeans.fit(x)
 
 # holds the cluster id and the images { id: [images] }
