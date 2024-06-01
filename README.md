@@ -1,4 +1,4 @@
-# Image Clustering Test
+# Image Clustering Practice
 
 ## Setup
 
