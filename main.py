@@ -27,15 +27,15 @@ imageset_path = r"imageset_1"
 os.chdir(working_path)
 
 # this list holds all the image filename
-flowers = []
+pictures = []
 
 # creates a ScandirIterator aliased as files
 with os.scandir(imageset_path) as files:
     # loops through each file in the directory
     for file in files:
         if file.name.endswith('.jpg'):
-            # adds only the image files to the flowers list
-            flowers.append(file.name)
+            # adds only the image files to the pictures list
+            pictures.append(file.name)
 
 
 model = VGG16()
@@ -58,16 +58,15 @@ data = {}
 p = r"vectors_result.csv"
 
 # lop through each image in the dataset
-for flower in flowers:
+for picture in pictures:
     # try to extract the features and update the dictionary
     try:
-        feat = extract_features(flower, model)
-        data[flower] = feat
+        feat = extract_features(picture, model)
+        data[picture] = feat
     # if something fails, save the extracted features as a pickle file (optional)
     except:
         with open(p, 'wb') as file:
             pickle.dump(data, file)
-
 
 # get a list of the filenames
 filenames = np.array(list(data.keys()))
