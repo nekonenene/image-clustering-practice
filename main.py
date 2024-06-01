@@ -14,6 +14,7 @@ from sklearn.decomposition import PCA
 
 # for everything else
 import os
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from random import randint
@@ -27,17 +28,17 @@ imageset_path = r"imageset"
 os.chdir(working_path)
 
 # this list holds all the image filename
-pictures = []
+image_filenames = []
 
 # creates a ScandirIterator aliased as files
 with os.scandir(imageset_path) as files:
     # loops through each file in the directory
     for file in files:
         if file.name.endswith('.jpg'):
-            # adds only the image files to the pictures list
-            pictures.append(imageset_path + '/' + file.name)
+            # adds only the image files to the image_filenames list
+            image_filenames.append(file.name)
 
-print(f"Number of pictures: {len(pictures)}")
+print(f"Number of image_filenames: {len(image_filenames)}")
 
 model = VGG16()
 model = Model(inputs = model.inputs, outputs = model.layers[-2].output)
@@ -59,11 +60,11 @@ data = {}
 p = r"vectors_result.csv"
 
 # lop through each image in the dataset
-for picture in pictures:
+for image_filename in image_filenames:
     # try to extract the features and update the dictionary
     try:
-        feat = extract_features(picture, model)
-        data[picture] = feat
+        feat = extract_features(imageset_path + '/' + image_filename, model)
+        data[image_filename] = feat
     # if something fails, save the extracted features as a pickle file (optional)
     except Exception as e:
         print(f"Error: {e}")
@@ -108,8 +109,17 @@ for file, cluster in zip(filenames, kmeans.labels_):
     else:
         groups[cluster].append(file)
 
-# print groups
-print(groups)
+# Generate groups CSV each picture order by cluster id and picture name
+with open('clusters.csv', 'w') as f:
+    f.write("cluster, filename\n") # header
+    sorted_groups = sorted(groups.items(), key=lambda x: x[0])
+    print(sorted_groups)
+
+    for cluster, filenames in sorted_groups:
+        # Sort by filename while keeping numbers order
+        sorted_filenames = sorted(filenames, key=lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)])
+        for filename in sorted_filenames:
+            f.write(f"{cluster}, {filename}\n")
 
 # function that lets you view a cluster (based on identifier)
 def view_cluster(cluster):
