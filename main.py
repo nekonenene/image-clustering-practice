@@ -20,18 +20,20 @@ from random import randint
 import pandas as pd
 import pickle
 
-path = r"CHANGE TO DATASET LOCATION"
+working_path = r"."
+imageset_path = r"imageset_1"
+
 # change the working directory to the path where the images are located
-os.chdir(path)
+os.chdir(working_path)
 
 # this list holds all the image filename
 flowers = []
 
 # creates a ScandirIterator aliased as files
-with os.scandir(path) as files:
+with os.scandir(imageset_path) as files:
     # loops through each file in the directory
     for file in files:
-        if file.name.endswith('.png'):
+        if file.name.endswith('.jpg'):
             # adds only the image files to the flowers list
             flowers.append(file.name)
 
@@ -41,11 +43,11 @@ model = Model(inputs = model.inputs, outputs = model.layers[-2].output)
 
 def extract_features(file, model):
     # load the image as a 224x224 array
-    img = load_img(file, target_size=(224,224))
+    img = load_img(file, target_size=(224, 224))
     # convert from 'PIL.Image.Image' to numpy array
     img = np.array(img)
     # reshape the data for the model reshape(num_of_samples, dim 1, dim 2, channels)
-    reshaped_img = img.reshape(1,224,224,3)
+    reshaped_img = img.reshape(1, 224, 224, 3)
     # prepare image for model
     imgx = preprocess_input(reshaped_img)
     # get the feature vector
@@ -53,18 +55,18 @@ def extract_features(file, model):
     return features
 
 data = {}
-p = r"CHANGE TO A LOCATION TO SAVE FEATURE VECTORS"
+p = r"vectors_result.csv"
 
 # lop through each image in the dataset
 for flower in flowers:
     # try to extract the features and update the dictionary
     try:
-        feat = extract_features(flower,model)
+        feat = extract_features(flower, model)
         data[flower] = feat
     # if something fails, save the extracted features as a pickle file (optional)
     except:
-        with open(p,'wb') as file:
-            pickle.dump(data,file)
+        with open(p, 'wb') as file:
+            pickle.dump(data, file)
 
 
 # get a list of the filenames
@@ -74,25 +76,28 @@ filenames = np.array(list(data.keys()))
 feat = np.array(list(data.values()))
 
 # reshape so that there are 210 samples of 4096 vectors
-feat = feat.reshape(-1,4096)
+feat = feat.reshape(-1, 4096)
 
-# get the unique labels (from the flower_labels.csv)
-df = pd.read_csv('flower_labels.csv')
-label = df['label'].tolist()
-unique_labels = list(set(label))
+# # get the unique labels (from the image_labels.csv)
+# df = pd.read_csv('image_labels.csv')
+# label = df['label'].tolist()
+# unique_labels = list(set(label))
+
+# print (f"Unique labels: {unique_labels}")
 
 # reduce the amount of dimensions in the feature vector
 pca = PCA(n_components=100, random_state=22)
 pca.fit(feat)
 x = pca.transform(feat)
 
+clusters = 21
 # cluster feature vectors
-kmeans = KMeans(n_clusters=len(unique_labels),n_jobs=-1, random_state=22)
+kmeans = KMeans(n_clusters=len(clusters), n_jobs=-1, random_state=22)
 kmeans.fit(x)
 
 # holds the cluster id and the images { id: [images] }
 groups = {}
-for file, cluster in zip(filenames,kmeans.labels_):
+for file, cluster in zip(filenames, kmeans.labels_):
     if cluster not in groups.keys():
         groups[cluster] = []
         groups[cluster].append(file)
@@ -101,7 +106,7 @@ for file, cluster in zip(filenames,kmeans.labels_):
 
 # function that lets you view a cluster (based on identifier)
 def view_cluster(cluster):
-    plt.figure(figsize = (25,25));
+    plt.figure(figsize = (25, 25));
     # gets the list of filenames for a cluster
     files = groups[cluster]
     # only allow up to 30 images to be shown at a time
@@ -110,7 +115,7 @@ def view_cluster(cluster):
         files = files[:29]
     # plot each image in the cluster
     for index, file in enumerate(files):
-        plt.subplot(10,10,index+1);
+        plt.subplot(10, 10, index+1);
         img = load_img(file)
         img = np.array(img)
         plt.imshow(img)
