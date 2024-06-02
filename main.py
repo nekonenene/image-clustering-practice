@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.applications import MobileNetV3Large
@@ -43,18 +42,10 @@ features_array = np.array(features_list)
 scaler = StandardScaler()
 features_scaled = scaler.fit_transform(features_array)
 
-# PCAを使用して次元を削減
-# pca = PCA(n_components=100, random_state=22)  # 適切なデータ次元数に調整してください
-# features_pca = pca.fit_transform(features_scaled)
-
-# 特徴量をNumPy配列に変換
-features_array = np.array(features_list)
-
 # 適切なepsの値を見つけたらDBSCANを使用してクラスタリング
 eps_value = 12 # この値が小さいほどクラスタ数が増える
 min_samples_value = 1
 dbscan = DBSCAN(eps=eps_value, min_samples=min_samples_value)
-# labels = dbscan.fit_predict(features_pca)
 labels = dbscan.fit_predict(features_array)
 
 # labels, filenames の組み合わせをCSVとして出力。ラベルの値が小さい順、同じラベルの中ではファイル名の順になるよう並び替えて出力
