@@ -1,7 +1,7 @@
 # 必要なライブラリをインポート
 from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
-from keras.applications.efficientnet import EfficientNetB0, preprocess_input
+from keras.applications.efficientnet import EfficientNetB2, preprocess_input
 from keras.models import Model
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -11,21 +11,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 
-# EfficientNetB0モデルをロードし、最終出力層の1つ前の層を出力とするように修正
-model = EfficientNetB0(weights='imagenet')
+# EfficientNetB2モデルをロードし、最終出力層の1つ前の層を出力とするように修正
+model = EfficientNetB2(weights='imagenet')
 model = Model(inputs=model.inputs, outputs=model.layers[-2].output)
 
 # 特徴量を抽出する関数
 def extract_features(filepath, model):
-    # 画像を224x224ピクセルの配列として読み込みます
-    img = load_img(filepath, target_size=(224, 224))
+    # 画像を260x260ピクセルの配列として読み込みます
+    img = load_img(filepath, target_size=(260, 260))
 
     # 'PIL.Image.Image'型からNumPy配列に変換します
     img = np.array(img)
 
     # モデルの入力のためにデータの形状を変更します
-    # 形状を (1, 224, 224, 3) にします (サンプル数、高さ、幅、チャンネル)
-    reshaped_img = img.reshape(1, 224, 224, 3)
+    # 形状を (1, 260, 260, 3) にします (サンプル数、高さ、幅、チャンネル)
+    reshaped_img = img.reshape(1, 260, 260, 3)
 
     # モデルの入力に合わせて画像を前処理します
     imgx = preprocess_input(reshaped_img)
