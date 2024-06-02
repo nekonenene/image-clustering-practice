@@ -1,159 +1,116 @@
-### From https://towardsdatascience.com/how-to-cluster-images-based-on-visual-similarity-cd6e7209fe34
-# for loading/processing the images
+# 必要なライブラリをインポート
 from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
-from keras.applications.vgg16 import preprocess_input
-
-# models
-from keras.applications.vgg16 import VGG16
+from keras.applications.efficientnet import EfficientNetB0, preprocess_input
 from keras.models import Model
-
-# clustering and dimension reduction
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-
-# for everything else
 import os
-import re
 import numpy as np
-import matplotlib.pyplot as plt
-from random import randint
 import pandas as pd
-import pickle
+import matplotlib.pyplot as plt
+import re
 
-CLUSTERS_COUNT = 30 # Number of clusters of similar images to group together
+# EfficientNetB0モデルをロードし、最終出力層の1つ前の層を出力とするように修正
+model = EfficientNetB0(weights='imagenet')
+model = Model(inputs=model.inputs, outputs=model.layers[-2].output)
 
+# 特徴量を抽出する関数
+def extract_features(filepath, model):
+    # 画像を224x224ピクセルの配列として読み込みます
+    img = load_img(filepath, target_size=(224, 224))
+
+    # 'PIL.Image.Image'型からNumPy配列に変換します
+    img = np.array(img)
+
+    # モデルの入力のためにデータの形状を変更します
+    # 形状を (1, 224, 224, 3) にします (サンプル数、高さ、幅、チャンネル)
+    reshaped_img = img.reshape(1, 224, 224, 3)
+
+    # モデルの入力に合わせて画像を前処理します
+    imgx = preprocess_input(reshaped_img)
+
+    # 特徴量ベクトルを取得します
+    features = model.predict(imgx)
+
+    # (1, 1280) の形状のデータを (1280,) に変換します
+    return features.flatten()
+
+# クラスタ数を設定
+CLUSTERS_COUNT = 30
 working_path = r"."
 imageset_path = r"imageset"
 
-# change the working directory to the path where the images are located
+# 作業ディレクトリを変更
 os.chdir(working_path)
 
-# this list holds all the image filename
+# 画像ファイル名のリストを保持
 image_filenames = []
 
-# creates a ScandirIterator aliased as files
+# 画像ファイルをスキャンし、画像ファイル名をリストに追加
 with os.scandir(imageset_path) as files:
-    # loops through each file in the directory
     for file in files:
         if file.name.endswith('.jpg'):
-            # adds only the image files to the image_filenames list
             image_filenames.append(file.name)
 
 print(f"Number of image_filenames: {len(image_filenames)}")
 
-model = VGG16()
-model = Model(inputs = model.inputs, outputs = model.layers[-2].output)
-
-def extract_features(filepath, model):
-    # load the image as a 224x224 array
-    img = load_img(filepath, target_size=(224, 224))
-    # convert from 'PIL.Image.Image' to numpy array
-    img = np.array(img)
-    # reshape the data for the model reshape(num_of_samples, dim 1, dim 2, channels)
-    reshaped_img = img.reshape(1, 224, 224, 3)
-    # prepare image for model
-    imgx = preprocess_input(reshaped_img)
-    # get the feature vector
-    features = model.predict(imgx)
-    return features
-
+# 特徴量の計算と保存
 data = {}
 p = r"vectors_result.csv"
 
-# lop through each image in the dataset
 for image_filename in image_filenames:
-    # try to extract the features and update the dictionary
-    try:
-        feat = extract_features(imageset_path + '/' + image_filename, model)
-        data[image_filename] = feat
-    # if something fails, save the extracted features as a pickle file (optional)
-    except Exception as e:
-        print(f"Error: {e}")
-        with open(p, 'wb') as file:
-            pickle.dump(data, file)
+    feat = extract_features(imageset_path + '/' + image_filename, model)
+    data[image_filename] = feat
 
-print(f"Number of data.keys: {len(data.keys())}")
-print(f"Number of data.values: {len(data.values())}")
+data_df = pd.DataFrame.from_dict(data, orient='index')
+data_df.to_csv(p)
 
-# get a list of the filenames
-filenames = np.array(list(data.keys()))
+# 次元削減とクラスタリング
+pca = PCA(n_components=2)
+x = pca.fit_transform(data_df)
 
-# get a list of just the features
-feat = np.array(list(data.values()))
-
-# reshape so that there are 210 samples of 4096 vectors
-feat = feat.reshape(-1, 4096)
-
-# # get the unique labels (from the image_labels.csv)
-# df = pd.read_csv('image_labels.csv')
-# label = df['label'].tolist()
-# unique_labels = list(set(label))
-
-# print (f"Unique labels: {unique_labels}")
-
-# reduce the amount of dimensions in the feature vector
-pca = PCA(n_components=100, random_state=22)
-pca.fit(feat)
-x = pca.transform(feat)
-
-# cluster feature vectors
 kmeans = KMeans(n_clusters=CLUSTERS_COUNT, random_state=22)
 kmeans.fit(x)
 
-# holds the cluster id and the images { id: [images] }
 groups = {}
-for file, cluster in zip(filenames, kmeans.labels_):
-    if cluster not in groups.keys():
+for file, cluster in zip(data_df.index, kmeans.labels_):
+    if cluster not in groups:
         groups[cluster] = []
-        groups[cluster].append(file)
-    else:
-        groups[cluster].append(file)
+    groups[cluster].append(file)
 
-# Generate groups CSV each picture order by cluster id and picture name
 with open('clusters.csv', 'w') as f:
-    f.write("cluster, filename\n") # header
-    sorted_groups = sorted(groups.items(), key=lambda x: x[0])
-    print(sorted_groups)
-
+    f.write("cluster, filename\n")
+    sorted_groups = sorted(groups.items())
     for cluster, filenames in sorted_groups:
-        # Sort by filename while keeping numbers order
         sorted_filenames = sorted(filenames, key=lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)])
         for filename in sorted_filenames:
             f.write(f"{cluster}, {filename}\n")
 
-# function that lets you view a cluster (based on identifier)
+# クラスタの表示
 def view_cluster(cluster):
-    plt.figure(figsize = (25, 25));
-    # gets the list of filenames for a cluster
+    plt.figure(figsize=(25, 25))
     files = groups[cluster]
-    # only allow up to 30 images to be shown at a time
     if len(files) > 30:
-        print(f"Clipping cluster size from {len(files)} to 30")
         files = files[:29]
-    # plot each image in the cluster
     for index, file in enumerate(files):
-        plt.subplot(10, 10, index+1);
+        plt.subplot(10, 10, index + 1)
         img = load_img(file)
         img = np.array(img)
         plt.imshow(img)
         plt.axis('off')
 
-
-# this is just incase you want to see which value for k might be the best
+# クラスタ数の最適化
 sse = []
 list_k = list(range(3, 50))
 
 for k in list_k:
     km = KMeans(n_clusters=k, random_state=22)
     km.fit(x)
-
     sse.append(km.inertia_)
 
-# Plot sse against k
 plt.figure(figsize=(6, 6))
 plt.plot(list_k, sse)
 plt.xlabel(r'Number of clusters *k*')
-plt.ylabel('Sum of squared distance');
-
+plt.ylabel('Sum of squared distance')
 plt.savefig("plot.png")
