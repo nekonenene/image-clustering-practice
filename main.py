@@ -20,11 +20,12 @@ import matplotlib.pyplot as plt
 from random import randint
 import pandas as pd
 import pickle
+import shutil
 
 CLUSTERS_COUNT = 30 # Number of clusters of similar images to group together
 
 working_path = r"."
-imageset_path = r"imageset"
+imageset_dir_path = 'imageset'
 
 # change the working directory to the path where the images are located
 os.chdir(working_path)
@@ -33,7 +34,7 @@ os.chdir(working_path)
 image_filenames = []
 
 # creates a ScandirIterator aliased as files
-with os.scandir(imageset_path) as files:
+with os.scandir(imageset_dir_path) as files:
     # loops through each file in the directory
     for file in files:
         if file.name.endswith('.jpg'):
@@ -65,7 +66,7 @@ p = r"vectors_result.csv"
 for image_filename in image_filenames:
     # try to extract the features and update the dictionary
     try:
-        feat = extract_features(imageset_path + '/' + image_filename, model)
+        feat = extract_features(imageset_dir_path + '/' + image_filename, model)
         data[image_filename] = feat
     # if something fails, save the extracted features as a pickle file (optional)
     except Exception as e:
@@ -121,6 +122,9 @@ with open('clusters.csv', 'w') as f:
         sorted_filenames = sorted(filenames, key=lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)])
         for filename in sorted_filenames:
             f.write(f"{cluster}, {filename}\n")
+
+# Copy clusters.csv into imageset_dir_path
+shutil.copy('clusters.csv', imageset_dir_path)
 
 # function that lets you view a cluster (based on identifier)
 def view_cluster(cluster):
