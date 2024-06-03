@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import shutil
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.applications import MobileNetV3Large
@@ -9,7 +10,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Model
 
 # 特定のフォルダのパスを指定
-folder_path = 'imageset'
+imageset_dir_path = 'imageset'
 
 # MobileNetV3モデルをロードし、特徴抽出用に調整
 base_model = MobileNetV3Large(weights='imagenet', include_top=False, input_shape=(224, 224, 3), pooling='avg')
@@ -25,12 +26,12 @@ def extract_features(img_path):
     return features.flatten()
 
 # フォルダ内のJPEG画像を読み込む
-image_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.jpg') or f.lower().endswith('.jpeg')]
+image_files = [f for f in os.listdir(imageset_dir_path) if f.lower().endswith('.jpg') or f.lower().endswith('.jpeg')]
 features_list = []
 filenames = []
 
 for filename in image_files:
-    file_path = os.path.join(folder_path, filename)
+    file_path = os.path.join(imageset_dir_path, filename)
     features = extract_features(file_path)
     features_list.append(features)
     filenames.append(filename)
@@ -52,3 +53,6 @@ labels = dbscan.fit_predict(features_array)
 output_df = pd.DataFrame({'label': labels, 'filename': filenames})
 output_df = output_df.sort_values(['label', 'filename'])
 output_df.to_csv('clusters.csv', index=False)
+
+# Cooy clusters.csv to imageset_dir_path
+shutil.copy('clusters.csv', imageset_dir_path)
